@@ -1,0 +1,142 @@
+// JJTree template file.
+
+options
+{
+	JDK_VERSION = "1.11";
+	VISITOR = true;
+	MULTI = true;
+	TRACK_TOKENS = true;
+	static = false;
+}
+
+PARSER_BEGIN(MeSQL)
+package shell.parser;
+
+public class MeSQL
+{
+	public static void main(String args [])
+	{
+		try
+		{
+			SimpleNode n = new MeSQL(System.in).Start();
+			n.dump("");
+		}
+		catch (Exception e)
+		{
+			System.out.println(e.getMessage());
+		}
+	}
+}
+
+PARSER_END(MeSQL)
+
+SKIP :
+{
+  " "
+| "\t"
+| "\n"
+| "\r"
+| < "--" (~[ "\n", "\r" ])*
+    (
+      "\n"
+    | "\r"
+    | "\r\n"
+    ) >
+| < "/*" (~[ "*" ])* "*"
+    (
+      ~[ "/" ] (~[ "*" ])* "*"
+    )*
+    "/" >
+}
+
+TOKEN [IGNORE_CASE]: // Keywords.
+{
+  < TABLE : "TABLE" >
+| < CREATE : "CREATE" >
+| < DROP : "DROP" >
+| < SELECT : "SELECT" >
+| < FROM : "FROM" >
+| < WHERE : "WHERE" >
+| < INSERT : "INSERT" >
+| < INTO : "INTO" >
+| < VALUES : "VALUES" >
+| < UPDATE : "UPDATE" >
+| < SET : "SET" >
+| < DELETE : "DELETE" >
+| < QUIT : "QUIT" >
+| < SOURCE : "SOURCE" >
+| < AND : "AND" >
+| < OR : "OR" >
+| < WILDCARD : "*" >
+| < INT : "INTEGER" | "INT" >
+| < CHAR : "CHAR" | "CHARACTER" >
+| < FIELD_MODIFIERS : "UNIQUE" | "NOT NULL" | "AUTO_INCREMENT" >
+| < COMPARISON_OPERATOR : "=" | "<>" | ">=" | "<=" | "<" | ">" | "LIKE" >
+}
+
+TOKEN : // LITERALS.
+{
+  < LESS_THAN : "<" >
+| < GREATER_THAN : ">" >
+| < ELEMENTARY_ARITHMETIC : "+" | "-" | "*" | "/" >
+| < STRING :
+	  "\"" (< LETTER > | < DIGIT > | < SYMBOL > | "'")* "\""
+	| "'" (< LETTER > | < DIGIT > | < SYMBOL > | "\"")* "'" >
+| < IDENTIFIER : < LETTER > ( < LETTER > | "_" | "." | < DIGIT > )* >
+| < NUMBER_LITERAL :
+  	< DIGIT > [ "." ] < DIGIT > ([ "f", "F" ])?
+  | < DIGIT > ([ "l", "L" ])?
+  >
+| < #DIGIT: [ "0"-"9" ] ([ "0"-"9" ])* >
+| < #LETTER : [ "_", "a"-"z", "A"-"Z" ] >
+| < #SYMBOL : [ "`", "~", "!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "-", "_", "=", "+", "{", "}", "[", "]", "\\", "|", ";", ":", ",", "<", ".", ">", "/", "?", " ", "\t" ] >
+}
+
+SimpleNode Start() : {} { (Statement())* { return jjtThis; } }
+
+// Statements.
+void Statement() #void : {}
+{
+(
+  Source()
+| Quit()
+| (
+    CreateTable()
+  | Select()
+  | Insert()
+  | Update()
+  | Delete()
+  | DropTable()
+  ) ";"
+)
+}
+
+void CreateTable() : {} { < CREATE > < TABLE > Identifier() "(" Field() ( "," Field() )* ")"}
+void Select() : {} { < SELECT > Columns() < FROM > Identifier() [< WHERE > OrCondition()] }
+void Insert() : {} { < INSERT > < INTO > Identifier() "(" Columns() ")" < VALUES > "(" Values() ")"}
+void Update() : {} { < UPDATE > Identifier() < SET > Assignments() [ < WHERE > OrCondition()] }
+void Delete() : {} { < DELETE > < FROM > Identifier() [ < WHERE > OrCondition()] }
+void DropTable() : {} { < DROP > < TABLE > Identifier() }
+void Source() : {} { < SOURCE > String() }
+void Quit() : {} { < QUIT > }
+
+void Assignments() : {} { Assignment() ("," Assignment())* }
+void Assignment() : {Token t;} {Identifier() t = < COMPARISON_OPERATOR > Value() { jjtThis.jjtSetValue(t.image); }}
+void Field() : {} { Identifier() Type() }
+void Type() #void : {} { Int() | Char() }
+void Columns() : {} { Wildcard() | Identifier() ("," Identifier())* }
+void Values() : {} { Value() ("," Value())* }
+void OrCondition() : {} { AndCondition() [ < OR > OrCondition() ] }
+void AndCondition() : {} { Condition() [ < AND > AndCondition() ] }
+void Condition() : {Token t;} { Identifier() t = < COMPARISON_OPERATOR > Value() { jjtThis.jjtSetValue(t.image); } }
+
+// Primitives.
+void Value() #void : {} { Number() | String() }
+void Wildcard() : { Token t; } { t = < WILDCARD > { jjtThis.jjtSetValue(t.image); } }
+void Modifier() : { Token t; } { t = < FIELD_MODIFIERS > { jjtThis.jjtSetValue(t.image); } }
+void Identifier() : { Token t; } { t = < IDENTIFIER > { jjtThis.jjtSetValue(t.image); } }
+void Char() : { Token t; } { t = < CHAR > "(" Number() ")" (Modifier())* { jjtThis.jjtSetValue(t.image); } }
+void Int() : { Token t; } { t = < INT > { jjtThis.jjtSetValue(t.image); } (Modifier())* }
+void String() : { Token t; } { t = < STRING > { jjtThis.jjtSetValue(t.image); } }
+void Number() : { Token t; } { [ t = < ELEMENTARY_ARITHMETIC > { jjtThis.jjtSetValue(t); } ] UnsignedNumber() }
+void UnsignedNumber() : { Token t; } { t = < NUMBER_LITERAL > { jjtThis.jjtSetValue(t.image); } }
