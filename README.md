@@ -17,4 +17,4 @@ The following process is applied to Linux/Unix systems only:
 * Install Java Compiler-Compiler (JavaCC) first; if one works on Ubuntu, try `sudo apt install javacc`;
 * Run the tree-building preprocessor by `jjtree ./src/shell/parser/MeSQL.jjt`;
 * Then run the parser by `javacc ./src/shell/parser/MeSQL.jj`;
-* Finally compile the project by `javac ./src/Shell.java`;
+* Finally compile the project by `javac ./src/Shell.java`.

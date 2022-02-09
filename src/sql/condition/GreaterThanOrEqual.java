@@ -20,6 +20,6 @@ public class GreaterThanOrEqual extends AbstractCondition
 	@Override
 	public boolean evaluate(TableDescription description, Map<String, String> data) throws SQLException
 	{
-		return false;
+		return ((comparator.compare(field.toValue(data.get(column)), field.toValue(value)) > 0) || (comparator.compare(field.toValue(data.get(column)), field.toValue(value)) == 0));
 	}
 }
